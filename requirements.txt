@@ -1,0 +1,8 @@
+streamlit>=1.28.0
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+huggingface_hub>=0.20.0
+scikit-learn>=1.2.0
+scikit-fda>=0.6.0          # for functional data analysis (may require scikit-fda or we can implement manually)
+# If scikit-fda not available, we'll use a simplified manual FPCA via basis expansion.
