@@ -33,7 +33,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 style="text-align: center;">📈 FPCR with Macro‑Weighted Curves</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center;">Functional data analysis | Smoothing + derivative score</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center;">Functional data analysis | Smoothing + derivative score adjusted by macro conditions</p>', unsafe_allow_html=True)
 
 st.sidebar.markdown("## 🧮 FPCR")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True, type="primary"):
@@ -43,6 +43,7 @@ if st.sidebar.button("🔄 Refresh Data", use_container_width=True, type="primar
 st.sidebar.markdown(f"**Run Date:** `{st.session_state.get('run_date', 'Not loaded')}`")
 st.sidebar.markdown(f"**Next Trading Day:** `{next_trading_day()}`")
 st.sidebar.markdown(f"**B‑spline basis:** {config.N_BASIS} | **Components:** {config.N_COMPONENTS}")
+st.sidebar.markdown(f"**Macros used:** VIX (for adaptive scaling)")
 
 OUTPUT_REPO = config.OUTPUT_REPO
 HF_TOKEN = config.HF_TOKEN
@@ -97,27 +98,27 @@ def display_universe(universe_name, uni_data, window_data, window_label):
             st.markdown(f"""
             <div class="hero-card">
                 <h3>{etf['ticker']}</h3>
-                <p>FPCR slope: {etf['fpcr_score_norm']:.3f}</p>
+                <p>FPCR macro‑adjusted score: {etf['fpcr_score_norm']:.3f}</p>
                 <p style="font-size:0.9rem;">raw: {etf['raw_score']:.4f}</p>
             </div>
             """, unsafe_allow_html=True)
     with st.expander(f"Full ranking for {universe_name}"):
-        df_full = pd.DataFrame(list(norm_scores.items()), columns=["Ticker", "Normalized Slope"])
+        df_full = pd.DataFrame(list(norm_scores.items()), columns=["Ticker", "Normalized Score"])
         df_full["Raw Score"] = df_full["Ticker"].apply(lambda t: raw_scores[t])
-        df_full = df_full.sort_values("Normalized Slope", ascending=False)
+        df_full = df_full.sort_values("Normalized Score", ascending=False)
         st.dataframe(df_full, use_container_width=True)
 
 tab1, tab2 = st.tabs(["📊 Best Window (Auto)", "🔍 Choose Window (Manual)"])
 
 with tab1:
-    st.header("📈 Top ETFs by FPCR Slope (Auto Best Window)")
+    st.header("📈 Top ETFs by FPCR Macro‑Adjusted Slope (Auto Best Window)")
     with st.expander("📖 Interpretation", expanded=False):
         st.markdown("""
         - **Functional Principal Component Regression** smooths return curves and extracts shape.
-        - This implementation fits a B‑spline to each ETF's return window and computes the derivative (slope) at the last point.
-        - High slope → upward curvature / momentum at the end of the window.
-        - The macro variables are not directly used in this simplified version but could be introduced as covariates in the FPCR step.
-        - Best window automatically selected.
+        - Each ETF's return window is fitted with a B‑spline basis, and the slope (derivative) at the last point is computed.
+        - The slope is then **multiplied by a macro factor** (e.g., VIX / 20) to adapt to current volatility conditions.
+        - High positive macro‑adjusted slope → upward curvature + favourable macro → expected continuation.
+        - The best window is automatically selected (largest raw score magnitude).
         """)
     for universe_name, uni_data in data["universes"].items():
         if not uni_data or not uni_data.get("all_windows"):
@@ -136,7 +137,7 @@ with tab1:
 
 with tab2:
     st.header("🔍 Manual Window Selection")
-    st.markdown("Choose a rolling window to inspect the FPCR slope scores.")
+    st.markdown("Choose a rolling window to inspect the FPCR macro‑adjusted scores.")
     for universe_name, uni_data in data["universes"].items():
         if not uni_data or not uni_data.get("all_windows"):
             st.warning(f"No window data for {universe_name}")
@@ -150,4 +151,4 @@ with tab2:
             st.warning("No data for selected window.")
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Functional Principal Component Regression | Smoothing + derivative score")
+st.sidebar.caption("Functional Principal Component Regression | Macro‑adjusted smoothing derivative")
